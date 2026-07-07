@@ -41,6 +41,37 @@ checkout, provider search) for users who do have a browser.
 
 ---
 
+## Using the WhatsApp bot
+
+Connect first (Twilio sandbox): from WhatsApp, send `join discussion-shot` to
+**+1 415 523 8886**. Then message the bot — it understands natural language, and
+these are the recognized commands:
+
+| Send this | What it does | Also understands |
+| --- | --- | --- |
+| `hi` | Greeting + intro | `hello`, `how far`, `hey` |
+| `help` | Show the command menu | `menu`, `?`, `commands` |
+| `balance` | Show your wallet balance | `bal`, `wallet` |
+| `fund` | Get your Nomba virtual account number to top up | `top up`, `add money`, `deposit` |
+| `send 2500 to 0123456789 gtbank` | Start a transfer — verifies the payee name, then asks for your PIN | `pay`, `transfer`, `wire`, `remit` |
+| *your PIN* | Confirm the pending transfer (4–8 chars, **within 10 minutes**) | — |
+| `cancel` | Cancel a pending transfer | `stop`, `abort` |
+| `status` | Show your recent transactions | `recent`, `history`, `last` |
+| `find a plumber in Yaba` | Search for service providers near a location | `looking for`, `need a`, `who can` |
+| `register me as a tailor in Ikeja, 5000/hr` | List yourself as a discoverable provider | `i'm a`, `sign me up`, `list me` |
+
+**How messages are understood:** amounts and 10-digit account numbers are parsed
+with deterministic **regex** (never an LLM, so money values can't be
+hallucinated); fuzzy phrasing for discovery/registration is resolved by
+**Gemini**, with a regex keyword fallback. A payment is a **two-step confirm**:
+the bot echoes the verified recipient, and only sends after you reply with your
+Payment Confirmation Token (PCT).
+
+Only **registered, verified** numbers can transact — new users onboard on the
+web portal (phone OTP + Nomba bank-name match) before the bot will act for them.
+
+---
+
 ## Nomba Integration
 
 ### Ledger architecture
