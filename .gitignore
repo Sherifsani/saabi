@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.prod
+.env.dev
+.venv
+.claude/
+.claire/
+SQUAD_API_README.md
+node_modules/
+dist/
+.env.local
