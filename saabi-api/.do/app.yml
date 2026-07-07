@@ -1,0 +1,129 @@
+# DigitalOcean App Platform spec for saabi-api
+# Deploy:   doctl apps create --spec saabi-api/.do/app.yaml
+# Update:   doctl apps update <APP_ID> --spec saabi-api/.do/app.yaml
+#
+# This replaces docker-compose.yaml. Mapping:
+#   compose `api`      -> services.api      (built from Dockerfile, public URL + TLS)
+#   compose `worker`   -> workers.celery    (same Dockerfile, no public port)
+#   compose `database` -> databases.db      (managed Postgres, NOT your container)
+#   compose `redis`    -> databases.redis   (managed Valkey, NOT your container)
+#   alembic migrations -> jobs.migrate      (runs once before each deploy)
+
+name: saabi-api
+region: lon1 # London
+
+# App-level env vars are injected into every component (api, worker, migrate job).
+# ${db.*} and ${redis.*} are binding variables — DO fills them in automatically
+# once the databases below are attached.
+envs:
+  - key: DATABASE_HOST
+    value: ${db.HOSTNAME}
+  - key: DATABASE_PORT
+    value: ${db.PORT}
+  - key: DATABASE_USER
+    value: ${db.USERNAME}
+  - key: DATABASE_PASSWORD
+    value: ${db.PASSWORD}
+  - key: DATABASE_NAME
+    value: ${db.DATABASE}
+  - key: REDIS_URL
+    value: ${redis.DATABASE_URL}?ssl_cert_reqs=CERT_NONE
+
+  - key: DB_POOL_SIZE
+    value: "60"
+  - key: DB_MAX_OVERFLOW
+    value: "20"
+  - key: DB_POOL_TIMEOUT
+    value: "30"
+  - key: DB_POOL_RECYCLE
+    value: "1000"
+
+  - key: SQUAD_SECRET_KEY
+    value: PUT_VALUE_HERE
+    type: SECRET
+  - key: SQUAD_BASE_URL
+    value: https://sandbox-api-d.squadco.com
+  - key: SQUAD_MERCHANT_ID
+    value: PUT_VALUE_HERE
+  - key: TWILIO_ACCOUNT_SID
+    value: PUT_VALUE_HERE
+    type: SECRET
+  - key: TWILIO_AUTH_TOKEN
+    value: PUT_VALUE_HERE
+    type: SECRET
+  - key: TWILIO_VERIFY_SERVICE_SID
+    value: PUT_VALUE_HERE
+  - key: TWILIO_FROM_NUMBER
+    value: PUT_VALUE_HERE
+  - key: TWILIO_WHATSAPP_NUMBER
+    value: PUT_VALUE_HERE
+  - key: TWILIO_JOIN_CODE
+    value: join <your-sandbox-keyword>
+  - key: TWILIO_DEMO_MODE
+    value: "true"
+  - key: JWT_SECRET
+    value: PUT_VALUE_HERE
+  - key: JWT_ALGORITHM
+    value: HS256
+  - key: JWT_EXPIRATION_HOURS
+    value: "24"
+  - key: OTEL_ENABLED
+    value: "false"
+  - key: OTEL_SERVICE_NAME
+    value: saabi-api
+  - key: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: http://tempo:4317
+
+services:
+  - name: api
+    dockerfile_path: saabi-api/Dockerfile
+    source_dir: saabi-api
+    github:
+      repo: Starlight-Hacks/squad-2026
+      branch: main
+      deploy_on_push: true
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    health_check:
+      http_path: /health
+    routes:
+      - path: /
+
+workers:
+  - name: celery
+    dockerfile_path: saabi-api/Dockerfile
+    source_dir: saabi-api
+    github:
+      repo: Starlight-Hacks/squad-2026
+      branch: main
+      deploy_on_push: true
+    run_command: celery -A app.worker.celery_app worker --loglevel=info
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY # runs once before api/worker roll out, on every deploy
+    dockerfile_path: saabi-api/Dockerfile
+    source_dir: saabi-api
+    github:
+      repo: Starlight-Hacks/squad-2026
+      branch: main
+    run_command: alembic upgrade head
+    instance_size_slug: apps-s-1vcpu-0.5gb
+
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: saabi-pg
+    db_name: defaultdb
+    db_user: doadmin 
+
+  - name: redis
+    engine: VALKEY
+    version: "8"
+    production: true 
+    cluster_name: PUT_VALUE_HERE

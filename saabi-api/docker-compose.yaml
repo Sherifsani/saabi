@@ -1,0 +1,125 @@
+services:
+  api:
+    depends_on:
+      - database
+    container_name: saabi-api
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --reload --log-level debug
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    restart: on-failure
+
+  worker:
+    depends_on:
+      - redis
+    container_name: saabi-api-worker
+    build: .
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    restart: on-failure
+
+  redis:
+    container_name: saabi-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  database:
+    container_name: saabi-postgres
+    image: postgres:18
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    restart: always
+
+  prometheus:
+    container_name: saabi-prometheus
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  loki:
+    container_name: saabi-loki
+    image: grafana/loki:3.0.0
+    command: -config.file=/etc/loki/loki-config.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    container_name: saabi-promtail
+    image: grafana/promtail:3.0.0
+    command: -config.file=/etc/promtail/promtail-config.yml
+    depends_on:
+      - loki
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  tempo:
+    container_name: saabi-tempo
+    image: grafana/tempo:2.5.0
+    command: -config.file=/etc/tempo/tempo.yml
+    ports:
+      - "3200:3200"   # tempo query api
+      - "4317:4317"   # otlp grpc (used by the api + worker)
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+    restart: unless-stopped
+
+  grafana:
+    container_name: saabi-grafana
+    image: grafana/grafana:11.2.0
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
+
