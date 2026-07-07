@@ -1,0 +1,60 @@
+# Render Blueprint for the SAABI API.
+# Create: Render Dashboard → New → Blueprint → connect this repo.
+# Render builds saabi-api/Dockerfile and deploys it as a public web service.
+# Secrets (sync: false) are prompted for once, during Blueprint creation.
+services:
+  - name: saabi-api
+    type: web
+    runtime: docker
+    plan: starter            # always-on; avoid `free` (it sleeps and would
+                             # cold-start on every Twilio/Nomba webhook)
+    region: frankfurt        # closest Render region to Nigeria
+    dockerfilePath: ./saabi-api/Dockerfile
+    dockerContext: ./saabi-api
+    healthCheckPath: /health
+    autoDeploy: true         # redeploy on push to the connected branch
+    envVars:
+      # ── Non-secret config ──────────────────────────────────────────
+      - key: NOMBA_BASE_URL
+        value: https://sandbox.nomba.com
+      - key: TWILIO_WHATSAPP_NUMBER
+        value: "+14155238886"
+      - key: TWILIO_JOIN_CODE
+        value: join discussion-shot
+      - key: TWILIO_OTP_CHANNEL
+        value: sms
+      - key: TWILIO_FROM_NUMBER
+        value: ""
+      - key: TWILIO_DEMO_MODE
+        value: "true"        # flip to "false" for production signature checks
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRATION_HOURS
+        value: "24"
+      - key: OTEL_ENABLED
+        value: "false"
+      # ── Secrets: enter these in the Render dashboard ───────────────
+      - key: DATABASE_URL          # your full Neon DSN (?sslmode=require…)
+        sync: false
+      - key: NOMBA_CLIENT_ID
+        sync: false
+      - key: NOMBA_CLIENT_SECRET
+        sync: false
+      - key: NOMBA_ACCOUNT_ID
+        sync: false
+      - key: NOMBA_SUBACCOUNT_ID
+        sync: false
+      - key: NOMBA_WEBHOOK_SECRET   # from the Nomba webhook form/dashboard
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
