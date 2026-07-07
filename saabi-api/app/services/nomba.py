@@ -342,76 +342,62 @@ async def create_checkout_order(
 
 
 # ── Webhook signature verification ────────────────────────────────────
-
-# Nomba signs webhooks with HMAC-SHA256 (Base64) over a colon-delimited string
-# built from these payload fields, in this order — NOT over the raw body.
-_SIGNATURE_FIELDS = (
-    'event_type',
-    'requestId',
-    'userId',
-    'walletId',
-    'transactionId',
-    'transactionType',
-    'time',
-    'responseCode',
-    'timestamp',
-)
-
-# The webhook payload nests most of these under ``data``; accept common
-# aliases so we can rebuild the string regardless of exact casing/nesting.
-_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
-    'event_type': ('event_type', 'eventType'),
-    'requestId': ('requestId', 'request_id'),
-    'userId': ('userId', 'user_id'),
-    'walletId': ('walletId', 'wallet_id'),
-    'transactionId': ('transactionId', 'transaction_id'),
-    'transactionType': ('transactionType', 'transaction_type', 'type'),
-    'time': ('time',),
-    'responseCode': ('responseCode', 'response_code'),
-    'timestamp': ('timestamp',),
-}
+#
+# Per Nomba's docs (https://developer.nomba.com/docs/api-basics/webhook), the
+# signature is HMAC-SHA256 (Base64) over a colon-delimited string — NOT the raw
+# body — built from these exact fields, in this order:
+#
+#   event_type : requestId : data.merchant.userId : data.merchant.walletId
+#   : data.transaction.transactionId : data.transaction.type
+#   : data.transaction.time : data.transaction.responseCode
+#   : <nomba-timestamp header>
+#
+# Note the last field is the ``nomba-timestamp`` *header*, not a payload field,
+# and userId/walletId live under ``data.merchant``.
 
 
-def _flatten(payload: dict[str, Any]) -> dict[str, Any]:
-    """Merge the top level with a nested ``data`` (and ``data.transaction``)."""
-    flat: dict[str, Any] = {}
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    txn = data.get('transaction') if isinstance(data.get('transaction'), dict) else {}
-    for source in (txn, data, payload):
-        for k, v in source.items():
-            if not isinstance(v, (dict, list)):
-                flat[k] = v
-    return flat
+def _s(value: Any) -> str:
+    """Stringify a field; empty string for missing/null (Nomba uses '' for null)."""
+    if value is None or (isinstance(value, str) and value.lower() == 'null'):
+        return ''
+    return str(value)
 
 
-def _pick(flat: dict[str, Any], field: str) -> str:
-    for alias in _FIELD_ALIASES.get(field, (field,)):
-        if alias in flat and flat[alias] is not None:
-            return str(flat[alias])
-    return ''
-
-
-def signature_base(payload: dict[str, Any]) -> str:
+def signature_base(payload: dict[str, Any], timestamp: str | None) -> str:
     """Reconstruct the colon-delimited string Nomba signs. Exposed for tests."""
-    flat = _flatten(payload)
-    return ':'.join(_pick(flat, field) for field in _SIGNATURE_FIELDS)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    merchant = data.get('merchant') if isinstance(data.get('merchant'), dict) else {}
+    txn = data.get('transaction') if isinstance(data.get('transaction'), dict) else {}
+    fields = [
+        _s(payload.get('event_type')),
+        _s(payload.get('requestId')),
+        _s(merchant.get('userId')),
+        _s(merchant.get('walletId')),
+        _s(txn.get('transactionId')),
+        _s(txn.get('type')),
+        _s(txn.get('time')),
+        _s(txn.get('responseCode')),
+        _s(timestamp),
+    ]
+    return ':'.join(fields)
 
 
-def compute_signature(payload: dict[str, Any]) -> str:
+def compute_signature(payload: dict[str, Any], timestamp: str | None) -> str:
     digest = hmac.new(
         settings.nomba_webhook_secret.encode(),
-        signature_base(payload).encode(),
+        signature_base(payload, timestamp).encode(),
         hashlib.sha256,
     ).digest()
     return base64.b64encode(digest).decode()
 
 
-def verify_webhook_signature(payload: dict[str, Any], signature: str | None) -> bool:
+def verify_webhook_signature(payload: dict[str, Any], signature: str | None, timestamp: str | None) -> bool:
     """Constant-time check of the ``nomba-signature`` header.
 
-    This guards the funding path in particular — a ``payment_success`` webhook
-    mints wallet balance, so an unauthenticated caller must never drive it.
+    ``timestamp`` is the ``nomba-timestamp`` request header (part of the signed
+    string). This guards the funding path in particular — a ``payment_success``
+    webhook mints wallet balance, so an unauthenticated caller must never drive it.
     """
     if not signature or not settings.nomba_webhook_secret:
         return False
-    return hmac.compare_digest(compute_signature(payload), signature.strip())
+    return hmac.compare_digest(compute_signature(payload, timestamp), signature.strip())

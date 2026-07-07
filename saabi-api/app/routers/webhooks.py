@@ -239,7 +239,8 @@ async def nomba_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Webhook body is not valid JSON.') from exc
 
     signature = request.headers.get('nomba-signature')
-    if not nomba_service.verify_webhook_signature(payload, signature):
+    timestamp = request.headers.get('nomba-timestamp')
+    if not nomba_service.verify_webhook_signature(payload, signature, timestamp):
         logger.warning('Nomba webhook rejected: bad or missing signature.')
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid Nomba signature.')
 
