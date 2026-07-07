@@ -1,0 +1,31 @@
+info:
+  name: user_registration
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/auth/register"
+  body:
+    type: json
+    data: |-
+      {
+        "phone_number": "{{phone_number}}",
+        "first_name": "{{first_name}}",
+        "last_name": "{{last_name}}",
+        "email": "{{email}}",
+        "date_of_birth": "{{dob}}",
+        "address": "{{address}}",
+        "gender": "1",
+        "account_number": "{{account_number}}",
+        "bank_code": "{{bank_code}}",
+        "geo_lat": {{geo_lat}},
+        "geo_lng": {{geo_lng}}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

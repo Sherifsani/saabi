@@ -1,0 +1,22 @@
+info:
+  name: set_pct
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/auth/set-pct"
+  body:
+    type: json
+    data: |-
+      {
+        "phone_number": "{{phone_number}}",
+        "pct": "{{pct}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

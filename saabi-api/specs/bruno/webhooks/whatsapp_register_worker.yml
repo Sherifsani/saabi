@@ -1,0 +1,24 @@
+info:
+  name: whatsapp_register_worker
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{base_url}}/webhooks/twilio/whatsapp"
+  body:
+    type: formUrlEncoded
+    formUrlEncoded:
+      - name: From
+        value: "whatsapp:{{phone_number}}"
+      - name: Body
+        value: "register me as a plumber in Yaba, 5000/hr"
+      - name: MessageSid
+        value: "SMreg0000000000000000000000000000"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

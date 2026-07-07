@@ -1,0 +1,22 @@
+info:
+  name: verify_otp
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{base_url}}/auth/verify-otp"
+  body:
+    type: json
+    data: |-
+      {
+        "phone_number": "{{phone_number}}",
+        "otp": "{{otp}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

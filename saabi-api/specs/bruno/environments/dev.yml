@@ -1,0 +1,34 @@
+name: dev
+variables:
+  - name: base_url
+    value: http://localhost:8000
+  - secret: true
+    name: phone_number
+  - secret: true
+    name: first_name
+  - secret: true
+    name: last_name
+  - secret: true
+    name: email
+  - secret: true
+    name: dob
+  - secret: true
+    name: address
+  - secret: true
+    name: account_number
+  - secret: true
+    name: bank_code
+  - secret: true
+    name: geo_lat
+  - secret: true
+    name: geo_lng
+  - secret: true
+    name: otp
+  - secret: true
+    name: pct
+  - secret: true
+    name: recipient_account_number
+  - secret: true
+    name: virtual_account_number
+  - secret: true
+    name: nomba_signature

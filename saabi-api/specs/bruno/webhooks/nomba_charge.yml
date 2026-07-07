@@ -1,0 +1,48 @@
+info:
+  name: nomba_charge
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: "{{base_url}}/webhooks/nomba"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: nomba-signature
+      value: "{{nomba_signature}}"
+  body:
+    type: json
+    data: |
+      {
+        "event_type": "payment_success",
+        "requestId": "req-demo-1",
+        "timestamp": "1700000000",
+        "data": {
+          "userId": "u1",
+          "walletId": "w1",
+          "aliasAccountNumber": "{{virtual_account_number}}",
+          "transactionAmount": "5000",
+          "narration": "Wallet top-up",
+          "transaction": {
+            "transactionId": "txn-demo-1",
+            "type": "vact_transfer",
+            "time": "2026-07-07T10:00:00Z",
+            "responseCode": "00"
+          }
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |
+  Simulates a Nomba `payment_success` webhook crediting a user's wallet.
+  The `nomba-signature` must be a valid HMAC-SHA256 (Base64) of the
+  colon-delimited field string over NOMBA_WEBHOOK_SECRET — compute it with
+  `app.services.nomba.compute_signature(payload)` and set the
+  `nomba_signature` env var before sending.

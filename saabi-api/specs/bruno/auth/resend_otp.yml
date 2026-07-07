@@ -1,0 +1,21 @@
+info:
+  name: resend_otp
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{base_url}}/auth/resend-otp"
+  body:
+    type: json
+    data: |-
+      {
+        "phone_number": "{{phone_number}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

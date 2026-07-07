@@ -1,0 +1,24 @@
+info:
+  name: whatsapp_fund
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}/webhooks/twilio/whatsapp"
+  body:
+    type: formUrlEncoded
+    formUrlEncoded:
+      - name: From
+        value: "whatsapp:{{phone_number}}"
+      - name: Body
+        value: "fund"
+      - name: MessageSid
+        value: "SMfund000000000000000000000000000"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

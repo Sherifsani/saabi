@@ -1,0 +1,39 @@
+info:
+  name: squad_charge
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{base_url}}/webhooks/squad/charge"
+  body:
+    type: json
+    data: |-
+      {
+        "Event": "charge_successful",
+        "TransactionRef": "SQUAD_REF_PLACEHOLDER",
+        "Body": {
+          "transaction_ref": "{{funding_reference}}",
+          "transaction_status": "success",
+          "amount": "500000",
+          "currency": "NGN"
+        }
+      }
+  headers:
+    - name: x-squad-signature
+      value: "{{squad_charge_signature}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Squad's collection webhook, fired after the user pays in the modal.
+
+  The body is signed: x-squad-signature is HMAC-SHA512(raw_body, squad_secret_key).
+  Compute the signature over the EXACT bytes you send, otherwise the request is
+  rejected with 403. funding_reference is the reference returned by
+  POST /wallet/fund/init.

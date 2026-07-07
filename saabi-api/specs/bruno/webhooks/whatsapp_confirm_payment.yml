@@ -1,0 +1,24 @@
+info:
+  name: whatsapp_confirm_payment
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/webhooks/twilio/whatsapp"
+  body:
+    type: formUrlEncoded
+    formUrlEncoded:
+      - name: From
+        value: "whatsapp:{{phone_number}}"
+      - name: Body
+        value: "{{pct}}"
+      - name: MessageSid
+        value: "SMyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
